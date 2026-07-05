@@ -1,0 +1,18 @@
+test bash
+
+# 1. Set up
+git init
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+
+# 2. Run
+uvicorn app.main:app --reload
+
+# 3. In another terminal, verify
+curl http://localhost:8000/health
+# Expected: {"status":"ok","environment":"development"}
+
+# 4. Check interactive docs render
+open http://localhost:8000/docs
