@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # Database
+    database_url: str
+    db_pool_min_size: int = 2
+    db_pool_max_size: int = 10
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
