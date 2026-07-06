@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Strava Webhooks
     strava_webhook_verify_token: str
 
+    # Internal/admin endpoints
+    internal_api_key: str
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
