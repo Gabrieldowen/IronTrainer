@@ -48,7 +48,7 @@ async def run_migrations() -> None:
         return
 
     logger.info("Connecting to database to run migrations")
-    conn = await asyncpg.connect(dsn=settings.database_url)
+    conn = await asyncpg.connect(dsn=settings.database_url, statement_cache_size=0)
 
     try:
         await _ensure_schema_migrations_table(conn)

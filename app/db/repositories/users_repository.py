@@ -1,12 +1,12 @@
 """
-Data access for the users table.
+Data access for the users table, including Strava OAuth token storage.
 
-Users are created during the Strava OAuth connect flow (next commit) —
-this repository just provides the lookup/upsert functions that flow and
-the webhook processor will both depend on.
+This repository is the only place in the codebase that writes SQL
+against users.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 import asyncpg
@@ -25,6 +25,9 @@ async def upsert_user(
     """
     Creates a user if one doesn't exist for this Strava athlete, or
     updates their profile fields if it does. Returns our internal id.
+
+    Does NOT touch token fields — use update_tokens() for those, so
+    a profile refresh never accidentally wipes out valid tokens.
     """
     query = """
         INSERT INTO users (strava_athlete_id, first_name, last_name, profile_picture_url)
@@ -45,13 +48,48 @@ async def upsert_user(
     return user_id
 
 
+async def update_tokens(
+    pool: asyncpg.Pool,
+    *,
+    user_id: int,
+    access_token: str,
+    refresh_token: str,
+    expires_at: datetime,
+    scope: str,
+) -> None:
+    """
+    Updates OAuth token fields for an existing user. Called after initial
+    connect and after every subsequent token refresh.
+    """
+    query = """
+        UPDATE users
+        SET access_token = $2,
+            refresh_token = $3,
+            token_expires_at = $4,
+            token_scope = $5
+        WHERE id = $1
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(query, user_id, access_token, refresh_token, expires_at, scope)
+
+    logger.info("Updated tokens for user | user_id=%d", user_id)
+
+
 async def get_user_by_strava_athlete_id(
     pool: asyncpg.Pool, strava_athlete_id: int
 ) -> asyncpg.Record | None:
-    """Fetches a user by their Strava athlete ID, or None if not connected yet."""
+    """Fetches a user (including tokens) by their Strava athlete ID, or None."""
     query = "SELECT * FROM users WHERE strava_athlete_id = $1"
     async with pool.acquire() as conn:
         return await conn.fetchrow(query, strava_athlete_id)
+
+
+async def get_user_by_id(pool: asyncpg.Pool, user_id: int) -> asyncpg.Record | None:
+    """Fetches a user (including tokens) by internal id — used when refreshing
+    an access token ahead of an API call, e.g. during webhook processing."""
+    query = "SELECT * FROM users WHERE id = $1"
+    async with pool.acquire() as conn:
+        return await conn.fetchrow(query, user_id)
 
 
 async def list_users(pool: asyncpg.Pool) -> list[asyncpg.Record]:

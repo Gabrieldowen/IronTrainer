@@ -100,3 +100,11 @@ async def list_activities_for_athlete(pool: asyncpg.Pool, athlete_id: int, limit
     """
     async with pool.acquire() as conn:
         return await conn.fetch(query, athlete_id, limit)
+
+
+async def delete_activity_by_strava_id(pool: asyncpg.Pool, strava_activity_id: int) -> None:
+    """Deletes an activity, used when Strava sends a delete webhook event."""
+    query = "DELETE FROM activities WHERE strava_activity_id = $1"
+    async with pool.acquire() as conn:
+        await conn.execute(query, strava_activity_id)
+    logger.info("Deleted activity | strava_activity_id=%d", strava_activity_id)

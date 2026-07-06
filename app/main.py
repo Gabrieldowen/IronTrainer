@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.routes import health
+from app.api.routes import health, strava
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import close_db_pool, init_db_pool
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(strava.router)
 
     @app.on_event("startup")
     async def on_startup() -> None:
@@ -39,8 +40,8 @@ def create_app() -> FastAPI:
             settings.app_env,
             settings.log_level,
         )
-        await init_db_pool()
-
+        app.state.db_pool = await init_db_pool()
+        
     @app.on_event("shutdown")
     async def on_shutdown() -> None:
         logger.info("Application shutting down")

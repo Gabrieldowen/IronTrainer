@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     db_pool_min_size: int = 2
     db_pool_max_size: int = 10
 
+    # Strava OAuth
+    strava_client_id: str
+    strava_client_secret: str
+    strava_redirect_uri: str
+
+    # Strava Webhooks
+    strava_webhook_verify_token: str
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
