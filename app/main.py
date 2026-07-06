@@ -10,7 +10,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api.routes import health, internal, strava
+from app.api.routes import health, internal, strava, coaching
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import close_db_pool, init_db_pool
@@ -33,6 +33,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(strava.router)
     app.include_router(internal.router)
+    app.include_router(coaching.router)
+
 
     @app.on_event("startup")
     async def on_startup() -> None:

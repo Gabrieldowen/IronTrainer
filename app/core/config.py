@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # Internal/admin endpoints
     internal_api_key: str
 
+    # AI Coaching (LLM provider) — see .env.example for how to swap providers
+    llm_api_key: str
+    llm_base_url: str
+    llm_model: str
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
