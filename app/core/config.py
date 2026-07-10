@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     llm_base_url: str
     llm_model: str
 
+    # Discord bot
+    discord_bot_token: str
+    app_base_url: str
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

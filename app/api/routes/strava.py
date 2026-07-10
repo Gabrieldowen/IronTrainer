@@ -31,24 +31,33 @@ class ConnectSuccessResponse(BaseModel):
 
 
 @router.get("/connect")
-async def connect() -> RedirectResponse:
-    """Redirects the user to Strava's authorization consent screen."""
-    auth_url = build_authorization_url()
-    logger.info("Redirecting user to Strava authorization page")
-    return RedirectResponse(url=auth_url)
+async def connect(discord_id: int | None = Query(default=None)) -> RedirectResponse:
+    """
+    Redirects the user to Strava's authorization consent screen.
 
+    If discord_id is provided (as it will be when the bot sends this
+    link), it's passed through as Strava's OAuth `state` param, so the
+    callback can link the resulting Strava account to that Discord user.
+    """
+    state = str(discord_id) if discord_id is not None else None
+    auth_url = build_authorization_url(state=state)
+    logger.info("Redirecting user to Strava authorization page | discord_id=%s", discord_id)
+    return RedirectResponse(url=auth_url)
 
 @router.get("/callback", response_model=ConnectSuccessResponse)
 async def callback(
     request: Request,
     code: str | None = Query(default=None),
     error: str | None = Query(default=None),
+    state: str | None = Query(default=None),
 ) -> ConnectSuccessResponse:
     """
     Strava redirects here after the user approves (or denies) access.
 
     - On approval: `code` is present, we exchange it for tokens.
     - On denial: `error=access_denied` is present instead, no `code`.
+    - `state` carries back the discord_id we sent in /connect, unchanged,
+      if this flow was initiated from Discord.
     """
     if error:
         logger.warning("Strava authorization denied by user | error=%s", error)
@@ -58,9 +67,10 @@ async def callback(
         raise HTTPException(status_code=400, detail="Missing 'code' query parameter")
 
     pool = request.app.state.db_pool
+    discord_id = int(state) if state else None
 
     try:
-        user_id = await complete_connect_flow(pool, code)
+        user_id = await complete_connect_flow(pool, code, discord_id=discord_id)
     except Exception:
         logger.exception("Failed to complete Strava connect flow")
         raise HTTPException(status_code=502, detail="Failed to connect Strava account")

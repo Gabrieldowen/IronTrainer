@@ -92,6 +92,25 @@ async def get_user_by_id(pool: asyncpg.Pool, user_id: int) -> asyncpg.Record | N
         return await conn.fetchrow(query, user_id)
 
 
+async def get_user_by_discord_id(pool: asyncpg.Pool, discord_id: int) -> asyncpg.Record | None:
+    """Fetches a user by their linked Discord id, or None if not connected."""
+    query = "SELECT * FROM users WHERE discord_id = $1"
+    async with pool.acquire() as conn:
+        return await conn.fetchrow(query, discord_id)
+
+
+async def link_discord_id(pool: asyncpg.Pool, *, user_id: int, discord_id: int) -> None:
+    """
+    Associates a Discord user id with an existing users row. Called once
+    the Strava OAuth callback completes, using the discord_id passed
+    through the OAuth state parameter.
+    """
+    query = "UPDATE users SET discord_id = $2 WHERE id = $1"
+    async with pool.acquire() as conn:
+        await conn.execute(query, user_id, discord_id)
+    logger.info("Linked Discord account | user_id=%d discord_id=%d", user_id, discord_id)
+
+
 async def list_users(pool: asyncpg.Pool) -> list[asyncpg.Record]:
     """Returns all connected users — useful later for admin/debug tooling."""
     query = "SELECT * FROM users ORDER BY created_at ASC"
